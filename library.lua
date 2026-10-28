@@ -1575,7 +1575,7 @@ function KeybindList.drag.onDragMove(mx, my)
     KeybindList.py = KeybindList.drag.oy + (my - KeybindList.drag.sy)
 end
 
-local InfoList = { visible = false, x = nil, py = nil, title = "info list", lines = {} }
+local InfoList = { visible = false, x = nil, y = nil, docked = true, title = "info list", lines = {} }
 
 local function drawInfoList()
     if not InfoList.visible then
@@ -1598,9 +1598,13 @@ local function drawInfoList()
     end
     local w = max(textWidth(InfoList.title) + 40, lineW + 24)
     local h = rows * 14 + 25
-    InfoList.py = InfoList.py or GUI_INSET + (vh - GUI_INSET) * 0.5
+    local win = library.main_frame[1]
+    if InfoList.docked and win then
+        InfoList.x, InfoList.y = win.x + win.w + 5, win.y
+    end
+    InfoList.y = InfoList.y or GUI_INSET + (vh - GUI_INSET - h) * 0.5
     InfoList.x = InfoList.x or vw - 20 - w
-    local x, y = InfoList.x, InfoList.py - h * 0.5
+    local x, y = InfoList.x, InfoList.y
     if menuOpen() then
         region(x, y, w, h, InfoList.drag)
     end
@@ -1632,12 +1636,13 @@ end
 
 InfoList.drag = {}
 function InfoList.drag.onDragStart(mx, my)
+    InfoList.docked = false
     InfoList.drag.sx, InfoList.drag.sy = mx, my
-    InfoList.drag.ox, InfoList.drag.oy = InfoList.x, InfoList.py
+    InfoList.drag.ox, InfoList.drag.oy = InfoList.x, InfoList.y
 end
 function InfoList.drag.onDragMove(mx, my)
     InfoList.x = InfoList.drag.ox + (mx - InfoList.drag.sx)
-    InfoList.py = InfoList.drag.oy + (my - InfoList.drag.sy)
+    InfoList.y = InfoList.drag.oy + (my - InfoList.drag.sy)
 end
 
 local Notifications = { inset = 0 }
