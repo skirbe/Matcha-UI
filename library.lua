@@ -3474,4 +3474,9 @@ library.themes = themes
 library.uis = uis
 _G.InterceptionUI = library
 
+print("UI By Pepsi")
+print("Discord @ xtiwy_")
+library:notification({ text = "Discord @ xtiwy_" })
+library:notification({ text = "UI By Pepsi" })
+
 return library
