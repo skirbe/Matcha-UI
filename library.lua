@@ -1368,6 +1368,9 @@ function library:get_config()
             config[i] = v
         end
     end
+    if library.layout_snapshot then
+        config.__layout = library.layout_snapshot()
+    end
     return HttpService:JSONEncode(config)
 end
 
@@ -1387,6 +1390,9 @@ function library:load_config(config_json)
                 function_set(v)
             end
         end
+    end
+    if type(config.__layout) == "table" and library.apply_layout then
+        library.apply_layout(config.__layout)
     end
 end
 
@@ -1654,6 +1660,91 @@ function InfoList.drag.onDragMove(mx, my)
     InfoList.y = InfoList.drag.oy + (my - InfoList.drag.sy)
 end
 
+local Layout = { watermarks = {}, previews = {} }
+
+local function finiteNumber(v)
+    return type(v) == "number" and v == v and v > -100000 and v < 100000
+end
+
+function library.layout_snapshot()
+    local _, vh = Util.viewport()
+    local windows, watermarks, previews = {}, {}, {}
+    for i, win in ipairs(library.main_frame) do
+        windows[i] = { x = win.x, y = win.y, w = win.w, h = win.h }
+    end
+    for i, mark in ipairs(Layout.watermarks) do
+        watermarks[i] = { x = mark.x, y = mark.y }
+    end
+    for i, panel in ipairs(Layout.previews) do
+        previews[i] = { x = panel.x, y = panel.y, w = panel.w, h = panel.h }
+    end
+    return {
+        windows = windows,
+        watermarks = watermarks,
+        previews = previews,
+        keybinds = { x = KeybindList.x, y = KeybindList.py or GUI_INSET + (vh - GUI_INSET) * 0.5 },
+        info = { x = InfoList.x, y = InfoList.y, docked = InfoList.docked },
+    }
+end
+
+function library.apply_layout(layout)
+    local vw, vh = Util.viewport()
+    local function place(target, saved, w, h)
+        if type(saved) ~= "table" then
+            return
+        end
+        if finiteNumber(saved.x) then
+            target.x = clamp(saved.x, 0, max(0, vw - (w or 40)))
+        end
+        if finiteNumber(saved.y) then
+            target.y = clamp(saved.y, 0, max(0, vh - (h or 20)))
+        end
+    end
+    local function resize(target, saved)
+        if target.minW and finiteNumber(saved.w) and finiteNumber(saved.h) then
+            target.w = clamp(saved.w, target.minW, max(target.minW, vw))
+            target.h = clamp(saved.h, target.minH, max(target.minH, vh))
+        end
+    end
+    for i, saved in ipairs(type(layout.windows) == "table" and layout.windows or {}) do
+        local win = library.main_frame[i]
+        if win and type(saved) == "table" then
+            resize(win, saved)
+            place(win, saved, win.w, win.h)
+        end
+    end
+    for i, saved in ipairs(type(layout.watermarks) == "table" and layout.watermarks or {}) do
+        if Layout.watermarks[i] then
+            place(Layout.watermarks[i], saved, 120, 26)
+        end
+    end
+    for i, saved in ipairs(type(layout.previews) == "table" and layout.previews or {}) do
+        local panel = Layout.previews[i]
+        if panel and type(saved) == "table" then
+            resize(panel, saved)
+            place(panel, saved, panel.w, panel.h)
+        end
+    end
+    local keybinds = layout.keybinds
+    if type(keybinds) == "table" then
+        if finiteNumber(keybinds.x) then
+            KeybindList.x = clamp(keybinds.x, 0, max(0, vw - (KeybindList.w or 80)))
+        end
+        if finiteNumber(keybinds.y) then
+            KeybindList.py = clamp(keybinds.y, 0, vh)
+        end
+    end
+    local info = layout.info
+    if type(info) == "table" then
+        if type(info.docked) == "boolean" then
+            InfoList.docked = info.docked
+        end
+        if not InfoList.docked then
+            place(InfoList, info, 120, 60)
+        end
+    end
+end
+
 local Notifications = { inset = 0 }
 
 function library:notification(properties)
@@ -1777,6 +1868,7 @@ function library:window(properties)
     end
     watermark.text = table.concat(watermark.parts, " | ")
     watermark.drag = makeDraggable(watermark)
+    Layout.watermarks[#Layout.watermarks + 1] = watermark
 
     addSurface(2, function()
         if not watermark.visible then
@@ -1848,6 +1940,7 @@ function library:window(properties)
         names = true,
     }
     espPreview.minW, espPreview.minH = espPreview.w, espPreview.h
+    Layout.previews[#Layout.previews + 1] = espPreview
     espPreview.drag = makeDraggable(espPreview)
     espPreview.resize = makeResizer(espPreview)
 
