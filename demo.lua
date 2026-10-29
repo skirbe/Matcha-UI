@@ -88,13 +88,13 @@ configs:button({ name = "save", callback = function()
         library:notification({ text = "enter a config name first" })
         return
     end
-    writefile(library.directory .. "/configs/" .. name .. ".cfg", library:get_config())
+    writefile(library:config_path(name), library:get_config())
     library:config_list_update()
     library:notification({ text = "saved " .. name })
 end })
 configs:button({ name = "load", callback = function()
     local name = flags["config_selected"]
-    local path = name and (library.directory .. "/configs/" .. name .. ".cfg")
+    local path = name and library:config_path(name)
     if path and isfile(path) then
         library:load_config(readfile(path))
         library:notification({ text = "loaded " .. name })
@@ -102,7 +102,7 @@ configs:button({ name = "load", callback = function()
 end })
 configs:button({ name = "delete", confirm = true, callback = function()
     local name = flags["config_selected"]
-    local path = name and (library.directory .. "/configs/" .. name .. ".cfg")
+    local path = name and library:config_path(name)
     if path and isfile(path) then
         delfile(path)
         library:config_list_update()

@@ -1185,9 +1185,7 @@ local library = {
     keybind_path = nil,
     panel_open = false,
     directory = "Pepsi UI",
-    folders = {
-        "/configs",
-    },
+    game_name = nil,
     font = nil,
 }
 library.__index = library
@@ -1259,9 +1257,6 @@ local function capitalize(text)
 end
 
 pcall(makefolder, library.directory)
-for _, path in next, library.folders do
-    pcall(makefolder, library.directory .. path)
-end
 
 function library.to_screen_point(position)
     local cam = workspace.CurrentCamera
@@ -1333,16 +1328,25 @@ function library:convert_enum(enum)
     return enum_table
 end
 
+function library:config_folder()
+    local game_name = tostring(library.game_name or ""):gsub('[<>:"/\\|%?%*%c]', ""):gsub("^%s+", ""):gsub("[%s%.]+$", "")
+    local folder = library.directory .. "/" .. (game_name ~= "" and game_name or "configs")
+    if not isfolder(folder) then
+        makefolder(folder)
+    end
+    return folder
+end
+
+function library:config_path(name)
+    return library:config_folder() .. "/" .. name .. ".cfg"
+end
+
 function library:config_list_update()
     if not library.config_holder then
         return
     end
     local list = {}
-    local config_path = library.directory .. "/configs"
-    if not isfolder(config_path) then
-        makefolder(config_path)
-    end
-    for _, file in next, listfiles(config_path) do
+    for _, file in next, listfiles(library:config_folder()) do
         local normalized = file:gsub("\\", "/")
         local parts = normalized:split("/")
         local filename = parts[#parts]
@@ -1855,13 +1859,15 @@ function library:window(properties)
     local cfg = {
         name = properties.Name or properties.name or properties.Title or properties.title or "sp4m.wtf",
         size = properties.Size or properties.size or dim2(0, 500, 0, 650),
+        game = properties.Game or properties.game,
     }
+    library.game_name = cfg.game or library.game_name
     local vw, vh = Util.viewport()
     local watermark = {
         x = 20,
         y = 20,
         visible = true,
-        parts = { cfg.name, "Apocalypse Rising 2" },
+        parts = { cfg.name, cfg.game or "Apocalypse Rising 2" },
     }
     local user = tostring(LocalPlayer.Name or "")
     if user ~= "" then

@@ -41,7 +41,14 @@ Every element keeps its value in `library.flags` under its flag, so you can chec
 - `window.set_info(title, lines)` and `window.toggle_info_list(true)` for the info box
 - `window.set_menu_visibility(false)` hides the menu
 - `library:get_config()` and `library:load_config(text)` for saving and loading
+- `library:config_path(name)` gives the file path for a config name
 
-The demo saves configs to `Pepsi UI/configs` in your Matcha workspace.
+Configs go in `Pepsi UI/configs` in your Matcha workspace. Give the window a game name and they go in that game's folder instead:
+
+```lua
+local window = library:window({ name = "my menu", game = "Apocalypse Rising 2" })
+```
+
+That saves to `Pepsi UI/Apocalypse Rising 2`, and the game name also shows in the watermark.
 
 Run `demo.lua` to see all of it. Insert opens and closes the menu.
