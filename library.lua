@@ -713,7 +713,7 @@ local function enumItem(enumType, name)
 end
 
 local UIT = {}
-for _, name in ipairs({ "Keyboard", "MouseButton1", "MouseButton2", "MouseButton3", "MouseMovement" }) do
+for _, name in ipairs({ "Keyboard", "MouseButton1", "MouseButton2", "MouseButton3", "MouseButton4", "MouseButton5", "MouseMovement" }) do
     UIT[name] = enumItem("UserInputType", name) or ("Enum.UserInputType." .. name)
 end
 local KEY_UNKNOWN = enumItem("KeyCode", "Unknown") or "Enum.KeyCode.Unknown"
@@ -785,6 +785,8 @@ local MOUSE_BUTTONS = {
     { vk = 0x01, item = UIT.MouseButton1 },
     { vk = 0x02, item = UIT.MouseButton2 },
     { vk = 0x04, item = UIT.MouseButton3 },
+    { vk = 0x05, item = UIT.MouseButton4 },
+    { vk = 0x06, item = UIT.MouseButton5 },
 }
 
 local Hit = {
@@ -1228,6 +1230,8 @@ do
     keys[UIT.MouseButton1] = "MB1"
     keys[UIT.MouseButton2] = "MB2"
     keys[UIT.MouseButton3] = "MB3"
+    keys[UIT.MouseButton4] = "X1"
+    keys[UIT.MouseButton5] = "X2"
 end
 
 local function keyName(key)
@@ -1307,6 +1311,11 @@ function library:animation(text)
 end
 
 function library:convert_enum(enum)
+    for _, item in pairs(UIT) do
+        if type(item) == "string" and item == enum then
+            return item
+        end
+    end
     local enum_parts = {}
     for part in string.gmatch(enum, "[%w_]+") do
         table.insert(enum_parts, part)
@@ -3097,7 +3106,7 @@ function library:keybind(properties)
                 local captured
                 if input.UserInputType == UIT.Keyboard then
                     captured = input.KeyCode
-                elseif input.UserInputType == UIT.MouseButton1 or input.UserInputType == UIT.MouseButton2 or input.UserInputType == UIT.MouseButton3 then
+                elseif input.UserInputType == UIT.MouseButton1 or input.UserInputType == UIT.MouseButton2 or input.UserInputType == UIT.MouseButton3 or input.UserInputType == UIT.MouseButton4 or input.UserInputType == UIT.MouseButton5 then
                     captured = input.UserInputType
                 else
                     return
@@ -3126,10 +3135,7 @@ function library:keybind(properties)
         end
     end)
 
-    library:connection(uis.InputEnded, function(input, game_event)
-        if game_event then
-            return
-        end
+    library:connection(uis.InputEnded, function(input)
         local selected_key = input.UserInputType == UIT.Keyboard and input.KeyCode or input.UserInputType
         if selected_key == cfg.key and cfg.mode == "hold" then
             cfg.set(false)
