@@ -1672,10 +1672,21 @@ end
 
 function library.layout_snapshot()
     local _, vh = Util.viewport()
-    local windows, watermarks, previews = {}, {}, {}
+    local windows, watermarks, previews, sections = {}, {}, {}, {}
+    
     for i, win in ipairs(library.main_frame) do
         windows[i] = { w = win.w, h = win.h }
+        for _, tab in ipairs(win.tabs) do
+            for _, col in ipairs({tab.left, tab.right}) do
+                for _, item in ipairs(col.items) do
+                    if item.pages and #item.pages > 0 then
+                        table.insert(sections, item.current_page)
+                    end
+                end
+            end
+        end
     end
+    
     for i, mark in ipairs(Layout.watermarks) do
         watermarks[i] = { x = mark.x, y = mark.y }
     end
@@ -1686,6 +1697,7 @@ function library.layout_snapshot()
         windows = windows,
         watermarks = watermarks,
         previews = previews,
+        sections = sections,
         keybinds = { x = KeybindList.x, y = KeybindList.py or GUI_INSET + (vh - GUI_INSET) * 0.5 },
         info = { x = InfoList.x, y = InfoList.y, docked = InfoList.docked },
     }
@@ -1746,6 +1758,28 @@ function library.apply_layout(layout)
         end
         if not InfoList.docked then
             place(InfoList, info, 120, 60)
+        end
+    end
+    
+    local saved_sections = layout.sections
+    if type(saved_sections) == "table" then
+        local idx = 1
+        local function apply_column(col)
+            for _, item in ipairs(col.items) do
+                if item.pages and #item.pages > 0 then
+                    local saved = saved_sections[idx]
+                    if finiteNumber(saved) then
+                        item.current_page = clamp(saved, 1, max(1, #item.pages))
+                    end
+                    idx = idx + 1
+                end
+            end
+        end
+        for _, win in ipairs(library.main_frame) do
+            for _, tab in ipairs(win.tabs) do
+                apply_column(tab.left)
+                apply_column(tab.right)
+            end
         end
     end
 end
@@ -2251,25 +2285,57 @@ Section.__index = Section
 function Section:contentHeight(w)
     local total = 0
     local items = self.holder.items
-    for i, item in ipairs(items) do
-        total = total + item:height(w - 28) + (i > 1 and 3 or 0)
+    local count = 0
+    for _, item in ipairs(items) do
+        if not self.pages or #self.pages == 0 or item.page == self.current_page then
+            count = count + 1
+            total = total + item:height(w - 28) + (count > 1 and 3 or 0)
+        end
     end
     return total
 end
 
 function Section:height(w)
-    return 33 + self:contentHeight(w)
+    local extra = (self.pages and #self.pages > 1) and 12 or 0
+    return 33 + extra + self:contentHeight(w)
 end
 
 function Section:draw(x, y, w)
     local h = self:height(w)
     fillRect(x, y + 4, x + w, y + h, COL.c8)
     frame(x + 2, y + 6, w - 4, h - 8, COL.c22, COL.c56)
+    
     local ex, ey, ew = x + 14, y + 18, w - 28
+    
+    -- Draw tabs if multiple pages exist
+    if self.pages and #self.pages > 1 then
+        local tabW = (ew - (#self.pages - 1) * 2) / #self.pages
+        local tx = ex
+        local ty = y + 10
+        for i, pageName in ipairs(self.pages) do
+            local active = (i == self.current_page)
+            local bx = tx + (i - 1) * (tabW + 2)
+            region(bx, ty, tabW, 14, self.tab_owners[i])
+            
+            if active then
+                fillRect(bx, ty, bx + tabW, ty + 14, COL.c22)
+                fillRect(bx, ty + 14, bx + tabW, ty + 15, accentColor())
+            else
+                fillRect(bx, ty, bx + tabW, ty + 14, COL.c19)
+            end
+            alignedText(bx, ty, tabW, 14, pageName, active and COL.white or COL.text, 0.5, 0.5, true)
+        end
+        ey = ty + 14 + 6
+    end
+    
     for _, item in ipairs(self.holder.items) do
         local ih = item:height(ew)
-        item:draw(ex, ey, ew)
-        ey = ey + ih + 3
+        if not self.pages or #self.pages == 0 or item.page == self.current_page then
+            item:draw(ex, ey, ew)
+            ey = ey + ih + 3
+        else
+            item:skip()
+        end
     end
     drawText(x + 8, y + 4 - 6, self.name, COL.text, true)
 end
@@ -2284,12 +2350,33 @@ function library:section(properties)
     local cfg = {
         name = properties.name or properties.Name or "Section",
         side = properties.side or properties.Side or "left",
+        pages = properties.pages or properties.tabs or {},
     }
     local column = self[cfg.side] or self.left
-    local section = setmetatable({ name = cfg.name, holder = { items = {} } }, Section)
+    local section = setmetatable({ 
+        name = cfg.name, 
+        pages = cfg.pages,
+        current_page = 1,
+        tab_owners = {},
+        holder = { items = {} } 
+    }, Section)
+    
+    for i = 1, #cfg.pages do
+        local owner = {}
+        owner.onClick = function()
+            section.current_page = i
+        end
+        table.insert(section.tab_owners, owner)
+    end
+    
     table.insert(column.items, section)
     cfg.holder = section.holder
     cfg._section = section
+    
+    function cfg.set_page(num)
+        section.current_page = clamp(tonumber(num) or 1, 1, max(1, #cfg.pages))
+    end
+    
     return setmetatable(cfg, library)
 end
 
@@ -2404,6 +2491,7 @@ function library:toggle(properties)
     element.labelOwner.onClick = click
     element.iconOwner.onClick = click
 
+    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     cfg.set(cfg.default)
 
@@ -2526,6 +2614,7 @@ function library:slider(properties)
         cfg.set(cfg.value)
     end
 
+    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -2710,6 +2799,7 @@ function library:dropdown(properties)
         cfg.set_visible(cfg.open)
     end
 
+    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -2963,6 +3053,7 @@ function library:colorpicker(properties)
         drawImage("previewChecker", px + 120, py + 124, 12, 12, a)
     end)
 
+    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -3242,6 +3333,7 @@ function library:keybind(properties)
         end
     end)
 
+    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -3298,6 +3390,7 @@ function library:button(properties)
         alignedText(bx + 2, y + 2, bw - 4, 12, label, COL.text, 0.5, 0.5, true)
     end
 
+    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     return setmetatable(cfg, library)
 end
@@ -3349,6 +3442,7 @@ function library:textbox(properties)
         cfg.callback(text)
     end
 
+    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     if cfg.default then
         cfg.set(cfg.default)
