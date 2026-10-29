@@ -1670,7 +1670,7 @@ function library.layout_snapshot()
     local _, vh = Util.viewport()
     local windows, watermarks, previews = {}, {}, {}
     for i, win in ipairs(library.main_frame) do
-        windows[i] = { x = win.x, y = win.y, w = win.w, h = win.h }
+        windows[i] = { w = win.w, h = win.h }
     end
     for i, mark in ipairs(Layout.watermarks) do
         watermarks[i] = { x = mark.x, y = mark.y }
@@ -1710,7 +1710,8 @@ function library.apply_layout(layout)
         local win = library.main_frame[i]
         if win and type(saved) == "table" then
             resize(win, saved)
-            place(win, saved, win.w, win.h)
+            win.x = clamp(win.x, 0, max(0, vw - win.w))
+            win.y = clamp(win.y, 0, max(0, vh - win.h))
         end
     end
     for i, saved in ipairs(type(layout.watermarks) == "table" and layout.watermarks or {}) do
