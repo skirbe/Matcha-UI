@@ -2290,36 +2290,36 @@ function Section:contentHeight(w)
     return total
 end
 
+local TAB_H = 18
+
 function Section:height(w)
-    return 33 + self:contentHeight(w)
+    return 33 + self:contentHeight(w) + (#self.pages > 1 and TAB_H or 0)
 end
 
-function Section:drawTitles(x, y)
-    if #self.pages == 1 then
-        drawText(x, y, self.name, COL.text, true)
-        return
-    end
-    local tx = x
+function Section:drawTabs(x, y, w)
+    local tabW = w / #self.pages
     for i, page in ipairs(self.pages) do
-        if i > 1 then
-            tx = tx + 8
-        end
-        local tw = textWidth(page.name)
-        region(tx, y, tw, 12, page.owner)
-        local color = COL.text
-        if i ~= self.current then
+        local tx = x + (i - 1) * tabW
+        region(tx, y, tabW, 16, page.owner)
+        local color
+        if i == self.current then
+            color = COL.white
+        else
             color = hovered(page.owner) and COL.heading or packColor(themes.preset.unselected_text)
         end
-        drawText(tx, y, page.name, color, true)
-        tx = tx + tw
+        alignedText(tx, y, tabW, 12, page.label or page.name, color, 0.5, 0.5, true)
+        if i == self.current then
+            fillRect(round(tx), y + 15, round(tx + tabW), y + 16, accentColor())
+        end
     end
 end
 
 function Section:draw(x, y, w)
     local h = self:height(w)
+    local multi = #self.pages > 1
     fillRect(x, y + 4, x + w, y + h, COL.c8)
     frame(x + 2, y + 6, w - 4, h - 8, COL.c22, COL.c56)
-    local ex, ey, ew = x + 14, y + 18, w - 28
+    local ex, ey, ew = x + 14, y + 18 + (multi and TAB_H or 0), w - 28
     for i, page in ipairs(self.pages) do
         if i == self.current then
             for _, item in ipairs(page.holder.items) do
@@ -2333,7 +2333,10 @@ function Section:draw(x, y, w)
             end
         end
     end
-    self:drawTitles(x + 8, y + 4 - 6)
+    drawText(x + 8, y - 2, self.name, COL.text, true)
+    if multi then
+        self:drawTabs(ex, y + 14, ew)
+    end
 end
 
 function Section:skip()
