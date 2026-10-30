@@ -1362,6 +1362,12 @@ function library:get_config()
     for i, v in next, flags do
         if type(v) == "table" and v.key then
             config[i] = { active = v.active, mode = v.mode, key = tostring(v.key) }
+            if type(v.keys) == "table" then
+                config[i].keys = {}
+                for n, key in ipairs(v.keys) do
+                    config[i].keys[n] = tostring(key)
+                end
+            end
         elseif type(v) == "table" and v.Transparency and v.Color then
             local color_hex = "ffffff"
             if typeof(v.Color) == "Color3" then
@@ -1413,6 +1419,16 @@ end
 
 local function accentColor(alpha)
     return packColor(themes.preset.accent, alpha)
+end
+
+local function resizeGrip(rx, ry, owner)
+    region(rx - 10, ry - 10, 12, 12, owner)
+    local color = Hit.drag == owner and accentColor() or hovered(owner) and grey(170) or grey(110)
+    for i = 0, 2 do
+        for j = 0, 2 - i do
+            fillRect(rx - i * 3 - 2, ry - j * 3 - 2, rx - i * 3, ry - j * 3, color)
+        end
+    end
 end
 
 local POPUP_ROW, POPUP_HEAD = 15, 15
@@ -1503,7 +1519,9 @@ function library:new_keybind(properties)
     end
 
     function cfg.update(n_properties)
-        if n_properties.key == nil or n_properties.key == "..." then
+        if n_properties.keyText then
+            cfg.set_parts(n_properties.text, n_properties.keyText)
+        elseif n_properties.key == nil or n_properties.key == "..." then
             cfg._prefix, cfg._key = nil, nil
             cfg._label = capitalize(n_properties.text)
             cfg._unbound = true
@@ -1638,7 +1656,7 @@ local function drawInfoList()
             local lx = inkX(x + 12, head)
             drawText(lx, ly, head, accentColor(), true)
             local vx = lx + textWidth(head) + CHAR_W
-            drawText(vx, ly, line.value, COL.white, true)
+            drawText(vx, ly, line.value, line.value_color or COL.white, true)
             local ink = vx + glyphBearings(string.sub(line.value, 1, 1))
             for _, item in ipairs(line.list) do
                 ly = ly + 14
@@ -1672,21 +1690,10 @@ end
 
 function library.layout_snapshot()
     local _, vh = Util.viewport()
-    local windows, watermarks, previews, sections = {}, {}, {}, {}
-    
+    local windows, watermarks, previews = {}, {}, {}
     for i, win in ipairs(library.main_frame) do
         windows[i] = { w = win.w, h = win.h }
-        for _, tab in ipairs(win.tabs) do
-            for _, col in ipairs({tab.left, tab.right}) do
-                for _, item in ipairs(col.items) do
-                    if item.pages and #item.pages > 0 then
-                        table.insert(sections, item.current_page)
-                    end
-                end
-            end
-        end
     end
-    
     for i, mark in ipairs(Layout.watermarks) do
         watermarks[i] = { x = mark.x, y = mark.y }
     end
@@ -1697,7 +1704,6 @@ function library.layout_snapshot()
         windows = windows,
         watermarks = watermarks,
         previews = previews,
-        sections = sections,
         keybinds = { x = KeybindList.x, y = KeybindList.py or GUI_INSET + (vh - GUI_INSET) * 0.5 },
         info = { x = InfoList.x, y = InfoList.y, docked = InfoList.docked },
     }
@@ -1758,28 +1764,6 @@ function library.apply_layout(layout)
         end
         if not InfoList.docked then
             place(InfoList, info, 120, 60)
-        end
-    end
-    
-    local saved_sections = layout.sections
-    if type(saved_sections) == "table" then
-        local idx = 1
-        local function apply_column(col)
-            for _, item in ipairs(col.items) do
-                if item.pages and #item.pages > 0 then
-                    local saved = saved_sections[idx]
-                    if finiteNumber(saved) then
-                        item.current_page = clamp(saved, 1, max(1, #item.pages))
-                    end
-                    idx = idx + 1
-                end
-            end
-        end
-        for _, win in ipairs(library.main_frame) do
-            for _, tab in ipairs(win.tabs) do
-                apply_column(tab.left)
-                apply_column(tab.right)
-            end
         end
     end
 end
@@ -2004,7 +1988,6 @@ function library:window(properties)
         end
         local x, y, w, h = window.x, window.y, window.w, window.h
         region(x, y, w, h, window.drag)
-        region(x + w - 10, y + h - 10, 10, 10, window.resize)
         frame(x, y, w, h, COL.c40, COL.c8)
         fillRect(x + 2, y + 2, x + w - 2, y + h - 2, COL.c26)
         local mx, my, mw, mh = x + 4, y + 4, w - 8, h - 8
@@ -2030,6 +2013,7 @@ function library:window(properties)
         fillRect(x, y, x + w, y + 2, accentColor())
         fillRect(x, y + 1, x + w, y + 2, COL.black50)
         alignedText(x, y - 1, w, 1, cfg.name, COL.text, 0.5, 0.5, true)
+        resizeGrip(mx + mw - 3, my + mh - 3, window.resize)
     end)
 
     local HITPART = {
@@ -2049,7 +2033,6 @@ function library:window(properties)
         local x, y, w, h = p.x, p.y, p.w, p.h
         if menuOpen() then
             region(x, y, w, h, p.drag)
-            region(x + w - 10, y + h - 10, 10, 10, p.resize)
         end
         frame(x, y, w, h, grey(56), COL.c8)
         local mx, my, mw, mh = x + 4, y + 4, w - 8, h - 8
@@ -2113,6 +2096,9 @@ function library:window(properties)
         fillRect(x, y, x + w, y + 2, accentColor())
         fillRect(x, y + 1, x + w, y + 2, COL.black50)
         alignedText(x, y - 1, w, 1, "esp preview", COL.text, 0.5, 0.5, true)
+        if menuOpen() then
+            resizeGrip(tx + tw - 3, ty + th - 3, p.resize)
+        end
     end
 
     addSurface(1, drawEspPreview)
@@ -2188,7 +2174,7 @@ function library:window(properties)
                 for _, item in ipairs(line.list or {}) do
                     list[#list + 1] = tostring(item)
                 end
-                out[#out + 1] = { label = tostring(line.label), value = tostring(line.value or ""), list = list }
+                out[#out + 1] = { label = tostring(line.label), value = tostring(line.value or ""), list = list, value_color = line.value_color and packColor(line.value_color) or nil }
             elseif type(line) == "table" then
                 out[#out + 1] = { text = tostring(line.text or line[1] or ""), color = line.color and packColor(line.color) or COL.text }
             else
@@ -2282,67 +2268,79 @@ end
 local Section = {}
 Section.__index = Section
 
+function Section:addPage(name)
+    local page = { name = name, holder = { items = {} }, owner = {} }
+    local index = #self.pages + 1
+    page.owner.onClick = function()
+        if self.current ~= index then
+            self.current = index
+            closeOpenElement()
+        end
+    end
+    self.pages[index] = page
+    return page
+end
+
 function Section:contentHeight(w)
     local total = 0
-    local items = self.holder.items
-    local count = 0
-    for _, item in ipairs(items) do
-        if not self.pages or #self.pages == 0 or item.page == self.current_page then
-            count = count + 1
-            total = total + item:height(w - 28) + (count > 1 and 3 or 0)
-        end
+    local items = self.pages[self.current].holder.items
+    for i, item in ipairs(items) do
+        total = total + item:height(w - 28) + (i > 1 and 3 or 0)
     end
     return total
 end
 
 function Section:height(w)
-    local extra = (self.pages and #self.pages > 1) and 12 or 0
-    return 33 + extra + self:contentHeight(w)
+    return 33 + self:contentHeight(w)
+end
+
+function Section:drawTitles(x, y)
+    if #self.pages == 1 then
+        drawText(x, y, self.name, COL.text, true)
+        return
+    end
+    local tx = x
+    for i, page in ipairs(self.pages) do
+        if i > 1 then
+            tx = tx + 8
+        end
+        local tw = textWidth(page.name)
+        region(tx, y, tw, 12, page.owner)
+        local color = COL.text
+        if i ~= self.current then
+            color = hovered(page.owner) and COL.heading or packColor(themes.preset.unselected_text)
+        end
+        drawText(tx, y, page.name, color, true)
+        tx = tx + tw
+    end
 end
 
 function Section:draw(x, y, w)
     local h = self:height(w)
     fillRect(x, y + 4, x + w, y + h, COL.c8)
     frame(x + 2, y + 6, w - 4, h - 8, COL.c22, COL.c56)
-    
     local ex, ey, ew = x + 14, y + 18, w - 28
-    
-    -- Draw tabs if multiple pages exist
-    if self.pages and #self.pages > 1 then
-        local tabW = (ew - (#self.pages - 1) * 2) / #self.pages
-        local tx = ex
-        local ty = y + 10
-        for i, pageName in ipairs(self.pages) do
-            local active = (i == self.current_page)
-            local bx = tx + (i - 1) * (tabW + 2)
-            region(bx, ty, tabW, 14, self.tab_owners[i])
-            
-            if active then
-                fillRect(bx, ty, bx + tabW, ty + 14, COL.c22)
-                fillRect(bx, ty + 14, bx + tabW, ty + 15, accentColor())
-            else
-                fillRect(bx, ty, bx + tabW, ty + 14, COL.c19)
+    for i, page in ipairs(self.pages) do
+        if i == self.current then
+            for _, item in ipairs(page.holder.items) do
+                local ih = item:height(ew)
+                item:draw(ex, ey, ew)
+                ey = ey + ih + 3
             end
-            alignedText(bx, ty, tabW, 14, pageName, active and COL.white or COL.text, 0.5, 0.5, true)
-        end
-        ey = ty + 14 + 6
-    end
-    
-    for _, item in ipairs(self.holder.items) do
-        local ih = item:height(ew)
-        if not self.pages or #self.pages == 0 or item.page == self.current_page then
-            item:draw(ex, ey, ew)
-            ey = ey + ih + 3
         else
-            item:skip()
+            for _, item in ipairs(page.holder.items) do
+                item:skip()
+            end
         end
     end
-    drawText(x + 8, y + 4 - 6, self.name, COL.text, true)
+    self:drawTitles(x + 8, y + 4 - 6)
 end
 
 function Section:skip()
-    for _, item in ipairs(self.holder.items) do
-        item:skip()
+    for _, page in ipairs(self.pages) do
+        for _, item in ipairs(page.holder.items) do
+            item:skip()
+        end
     end
 end
 
@@ -2350,33 +2348,30 @@ function library:section(properties)
     local cfg = {
         name = properties.name or properties.Name or "Section",
         side = properties.side or properties.Side or "left",
-        pages = properties.pages or properties.tabs or {},
     }
     local column = self[cfg.side] or self.left
-    local section = setmetatable({ 
-        name = cfg.name, 
-        pages = cfg.pages,
-        current_page = 1,
-        tab_owners = {},
-        holder = { items = {} } 
-    }, Section)
-    
-    for i = 1, #cfg.pages do
-        local owner = {}
-        owner.onClick = function()
-            section.current_page = i
-        end
-        table.insert(section.tab_owners, owner)
-    end
-    
+    local section = setmetatable({ name = cfg.name, pages = {}, current = 1 }, Section)
+    section.holder = section:addPage(cfg.name).holder
     table.insert(column.items, section)
     cfg.holder = section.holder
     cfg._section = section
-    
-    function cfg.set_page(num)
-        section.current_page = clamp(tonumber(num) or 1, 1, max(1, #cfg.pages))
+    return setmetatable(cfg, library)
+end
+
+function library:subtab(properties)
+    local section = self._section
+    if not section then
+        return nil
     end
-    
+    if type(properties) == "string" then
+        properties = { name = properties }
+    end
+    local cfg = {
+        name = properties.name or properties.Name or "Page",
+        side = self.side,
+    }
+    cfg.holder = section:addPage(cfg.name).holder
+    cfg._section = section
     return setmetatable(cfg, library)
 end
 
@@ -2491,7 +2486,6 @@ function library:toggle(properties)
     element.labelOwner.onClick = click
     element.iconOwner.onClick = click
 
-    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     cfg.set(cfg.default)
 
@@ -2614,7 +2608,6 @@ function library:slider(properties)
         cfg.set(cfg.value)
     end
 
-    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -2799,7 +2792,6 @@ function library:dropdown(properties)
         cfg.set_visible(cfg.open)
     end
 
-    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -3053,7 +3045,6 @@ function library:colorpicker(properties)
         drawImage("previewChecker", px + 120, py + 124, 12, 12, a)
     end)
 
-    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -3087,6 +3078,77 @@ function library:keybind(properties)
     }
     flags[cfg.flag] = {}
 
+    local function normalize(value)
+        if type(value) == "string" and value ~= "..." then
+            value = library:convert_enum(value)
+        end
+        if value == nil or value == false or value == KEY_ESCAPE then
+            return "..."
+        end
+        return value
+    end
+
+    local slots = {}
+    local given = type(properties.keys) == "table" and #properties.keys > 0 and properties.keys or { cfg.key or "..." }
+    for i = 1, #given do
+        slots[i] = { key = normalize(given[i]), owner = {}, held = false, x = 0 }
+    end
+    local multi = #slots > 1
+
+    local function bound(slot)
+        return slot.key ~= nil and slot.key ~= "..."
+    end
+
+    local function unbound()
+        for _, slot in ipairs(slots) do
+            if bound(slot) then
+                return false
+            end
+        end
+        return true
+    end
+
+    local function anyHeld()
+        for _, slot in ipairs(slots) do
+            if slot.held and bound(slot) then
+                return true
+            end
+        end
+        return false
+    end
+
+    local function firstKey()
+        for _, slot in ipairs(slots) do
+            if bound(slot) then
+                return slot.key
+            end
+        end
+        return "..."
+    end
+
+    local function listText()
+        local parts = {}
+        for _, slot in ipairs(slots) do
+            if bound(slot) then
+                parts[#parts + 1] = listKeyName(slot.key)
+            end
+        end
+        return #parts > 0 and table.concat(parts, ", ") or nil
+    end
+
+    local function publish()
+        local value = { mode = cfg.mode, key = cfg.key, active = cfg.active }
+        if multi then
+            value.keys = {}
+            for i, slot in ipairs(slots) do
+                value.keys[i] = slot.key
+            end
+        end
+        flags[cfg.flag] = value
+    end
+
+    cfg.key = firstKey()
+
     local key = library:new_keybind({
         text = cfg.display,
         key = cfg.key,
@@ -3096,35 +3158,45 @@ function library:keybind(properties)
     })
 
     local element = Element.new("keybind")
-    element.textOwner = {}
     element.anchor = { x = 0, y = 0 }
-    element.text = "ERROR"
-    local captureArmed = false
+    local captureSlot = nil
 
     local KEY_PAD = 3
 
-    function element:width()
-        if self.inner then
-            return inkWidth("[") + KEY_PAD + inkWidth(self.inner) + KEY_PAD + inkWidth("]") + 1
+    local function slotWidth(slot)
+        if slot.inner then
+            return inkWidth("[") + KEY_PAD + inkWidth(slot.inner) + KEY_PAD + inkWidth("]") + 1
         end
-        return max(16, textWidth(self.text))
+        return max(16, textWidth(slot.text or "..."))
+    end
+
+    function element:width()
+        local total = 0
+        for i, slot in ipairs(slots) do
+            total = total + slotWidth(slot) + (i > 1 and 3 or 0)
+        end
+        return total
     end
 
     function element:drawRight(x, y)
-        local w = self:width()
         self.anchor.x, self.anchor.y = x, y
-        region(x, y, w, 12, self.textOwner)
-        if self.inner then
-            local ty = y + (12 - TEXT_H) * 0.5
-            local openW, openLb = inkWidth("[")
-            local innerW, innerLb = inkWidth(self.inner)
-            local _, closeLb = inkWidth("]")
-            local ix = x + openW + KEY_PAD
-            drawText(x - openLb, ty, "[", COL.text, true)
-            drawText(ix - innerLb, ty, self.inner, self.unbound and COL.placeholder or COL.text, true)
-            drawText(ix + innerW + KEY_PAD - closeLb, ty, "]", COL.text, true)
-        else
-            alignedText(x, y, w, 12, self.text, COL.text, 0.5, 0.5, true)
+        for _, slot in ipairs(slots) do
+            local w = slotWidth(slot)
+            slot.x = x
+            region(x, y, w, 12, slot.owner)
+            if slot.inner then
+                local ty = y + (12 - TEXT_H) * 0.5
+                local openW, openLb = inkWidth("[")
+                local innerW, innerLb = inkWidth(slot.inner)
+                local _, closeLb = inkWidth("]")
+                local ix = x + openW + KEY_PAD
+                drawText(x - openLb, ty, "[", COL.text, true)
+                drawText(ix - innerLb, ty, slot.inner, slot.unbound and COL.placeholder or COL.text, true)
+                drawText(ix + innerW + KEY_PAD - closeLb, ty, "]", COL.text, true)
+            else
+                alignedText(x, y, w, 12, slot.text or "...", COL.text, 0.5, 0.5, true)
+            end
+            x = x + w + 3
         end
     end
 
@@ -3141,7 +3213,7 @@ function library:keybind(properties)
     local modeOptions = {}
 
     local function updateList()
-        key.update({ text = cfg.display, key = cfg.key, mode = cfg.mode })
+        key.update({ text = cfg.display, key = cfg.key, mode = cfg.mode, keyText = multi and listText() or nil })
     end
 
     function cfg.set_display(text)
@@ -3167,45 +3239,46 @@ function library:keybind(properties)
         elseif mode == "hold" then
             cfg.set(false)
         end
-        flags[cfg.flag] = { mode = cfg.mode, key = cfg.key, active = cfg.active }
-    end
-
-    local function unbound()
-        return cfg.key == nil or cfg.key == "..."
+        publish()
     end
 
     local function showKey()
+        cfg.key = firstKey()
         cfg.key_name = keyName(cfg.key)
-        if unbound() then
-            element.text, element.inner, element.unbound = "[none]", "none", true
-        else
-            element.inner = string.lower(cfg.key_name)
-            element.text, element.unbound = "[" .. element.inner .. "]", false
+        for _, slot in ipairs(slots) do
+            if bound(slot) then
+                slot.inner = string.lower(keyName(slot.key))
+                slot.text, slot.unbound = "[" .. slot.inner .. "]", false
+            else
+                slot.text, slot.inner, slot.unbound = "[none]", "none", true
+            end
         end
     end
 
-    function cfg.set(input)
+    function cfg.set(input, index)
         if type(input) == "boolean" then
             local cached = input
             if cfg.mode == "always" or unbound() then
                 cached = true
             end
             cfg.active = cached
-            flags[cfg.flag] = { mode = cfg.mode, key = cfg.key, active = cfg.active }
+            publish()
             key.set_active(cached and true or false)
             cfg.callback(cached)
         elseif isKeyItem(input) then
             if input == KEY_ESCAPE or input == KEY_BACKSPACE then
                 input = "..."
             end
-            cfg.key = input or "..."
+            local slot = slots[index or 1] or slots[1]
+            slot.key = input or "..."
+            slot.held = false
             showKey()
             if unbound() then
                 cfg.active = true
             elseif cfg.mode == "hold" then
-                cfg.active = false
+                cfg.active = anyHeld()
             end
-            flags[cfg.flag] = { mode = cfg.mode, key = cfg.key, active = cfg.active }
+            publish()
             updateList()
             cfg.callback(cfg.active or false)
         elseif input == "toggle" or input == "hold" or input == "always" then
@@ -3213,17 +3286,27 @@ function library:keybind(properties)
             if input == "always" then
                 cfg.active = true
             end
-            flags[cfg.flag] = { mode = cfg.mode, key = cfg.key, active = cfg.active }
+            publish()
             cfg.callback(cfg.active or false)
         elseif type(input) == "table" then
-            local newKey = input.key
-            if type(newKey) == "string" and newKey ~= "..." then
-                newKey = library:convert_enum(newKey)
+            if multi and type(input.keys) == "table" then
+                for i, slot in ipairs(slots) do
+                    slot.key = normalize(input.keys[i])
+                    slot.held = false
+                end
+            else
+                local newKey = normalize(input.key)
+                local present = false
+                for _, slot in ipairs(slots) do
+                    if slot.key == newKey then
+                        present = true
+                    end
+                end
+                if not multi or (newKey ~= "..." and not present) then
+                    slots[1].key = newKey
+                    slots[1].held = false
+                end
             end
-            if newKey == KEY_ESCAPE then
-                newKey = "..."
-            end
-            cfg.key = newKey or "..."
             cfg.mode = input.mode or "toggle"
             if input.active then
                 cfg.active = input.active
@@ -3231,12 +3314,12 @@ function library:keybind(properties)
             if unbound() then
                 cfg.active = true
             end
-            flags[cfg.flag] = { mode = cfg.mode, key = cfg.key, active = cfg.active }
             showKey()
+            publish()
             updateList()
         end
         if cfg.keybind_name then
-            key.set_parts(cfg.keybind_name, listKeyName(cfg.key))
+            key.set_parts(cfg.keybind_name, multi and listText() or listKeyName(cfg.key))
             key.set_visible(cfg.active and true or false)
         end
         key.set_active(cfg.active and true or false)
@@ -3267,29 +3350,34 @@ function library:keybind(properties)
         if not cfg.open then
             return
         end
-        local x, y, w = element.anchor.x, element.anchor.y + 15, 57
+        local opener = cfg.popupSlot or slots[1]
+        local x, y, w = opener.x, element.anchor.y + 15, 57
         local hgt = popupHeight(#modeOptions, "mode")
-        registerPopup(x, y, x + w, y + hgt, element.textOwner, "right", closeModes)
+        registerPopup(x, y, x + w, y + hgt, opener.owner, "right", closeModes)
         local oy = popupChrome(x, y, w, hgt, "mode")
         for _, option in ipairs(modeOptions) do
             oy = popupRow(x, oy, w, option.owner, option.text, optionColor(option.owner, cfg.mode == option.mode))
         end
     end)
 
-    element.textOwner.onRightClick = function()
-        cfg.open = not cfg.open
-        cfg.set_visible(cfg.open)
-    end
-
-    element.textOwner.onDown = function()
-        captureArmed = true
+    for i, slot in ipairs(slots) do
+        slot.owner.onRightClick = function()
+            cfg.popupSlot = slot
+            cfg.open = not cfg.open
+            cfg.set_visible(cfg.open)
+        end
+        slot.owner.onDown = function()
+            captureSlot = i
+        end
     end
 
     addUpdater(function()
-        if captureArmed then
-            captureArmed = false
-            element.text = "..."
-            element.inner = nil
+        if captureSlot then
+            local index = captureSlot
+            captureSlot = nil
+            showKey()
+            local slot = slots[index]
+            slot.text, slot.inner = "...", nil
             if cfg.binding then
                 cfg.binding:Disconnect()
             end
@@ -3306,18 +3394,29 @@ function library:keybind(properties)
                     cfg.binding:Disconnect()
                     cfg.binding = nil
                 end
-                cfg.set(captured)
+                cfg.set(captured, index)
                 updateList()
             end)
         end
     end)
 
+    local function pressedKey(input)
+        return input.UserInputType == UIT.Keyboard and input.KeyCode or input.UserInputType
+    end
+
     library:connection(uis.InputBegan, function(input, game_event)
         if game_event or cfg.binding then
             return
         end
-        local selected_key = input.UserInputType == UIT.Keyboard and input.KeyCode or input.UserInputType
-        if selected_key == cfg.key then
+        local selected_key = pressedKey(input)
+        local matched = false
+        for _, slot in ipairs(slots) do
+            if bound(slot) and selected_key == slot.key then
+                slot.held = true
+                matched = true
+            end
+        end
+        if matched then
             if cfg.mode == "toggle" then
                 cfg.set(not cfg.active)
             elseif cfg.mode == "hold" then
@@ -3327,13 +3426,19 @@ function library:keybind(properties)
     end)
 
     library:connection(uis.InputEnded, function(input)
-        local selected_key = input.UserInputType == UIT.Keyboard and input.KeyCode or input.UserInputType
-        if selected_key == cfg.key and cfg.mode == "hold" then
+        local selected_key = pressedKey(input)
+        local matched = false
+        for _, slot in ipairs(slots) do
+            if bound(slot) and selected_key == slot.key then
+                slot.held = false
+                matched = true
+            end
+        end
+        if matched and cfg.mode == "hold" and not anyHeld() then
             cfg.set(false)
         end
     end)
 
-    element.page = self._section and self._section.current_page or 1
     if cfg.name then
         table.insert(self.holder.items, element)
     else
@@ -3390,7 +3495,6 @@ function library:button(properties)
         alignedText(bx + 2, y + 2, bw - 4, 12, label, COL.text, 0.5, 0.5, true)
     end
 
-    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     return setmetatable(cfg, library)
 end
@@ -3442,7 +3546,6 @@ function library:textbox(properties)
         cfg.callback(text)
     end
 
-    element.page = self._section and self._section.current_page or 1
     table.insert(self.holder.items, element)
     if cfg.default then
         cfg.set(cfg.default)
