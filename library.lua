@@ -2578,17 +2578,24 @@ function library:slider(properties)
             region(sx - 15, sy - 1, 8, 8, self.subOwner)
             alignedText(sx - 15, sy - 1, 8, 8, "-", COL.text, 0.5, 0.5, true)
         end
-        if Focus.box == inputBox then
-            region(sx, sy, sw, 8, inputBox.owner)
-            frame(sx, sy, sw, 8, COL.c8, accentColor())
-            drawFieldText(sx, sy, sw, 13, inputBox.text, "", true, false)
-            return
-        end
         frame(sx + 2, sy + 2, sw - 4, 4, COL.c22, COL.c56)
         local fw = sw * self.fraction
         local aw = (sw - 4) * self.fraction
         fillRect(sx, sy, sx + fw, sy + 8, COL.c19)
         frame(sx + 2, sy + 2, aw, 4, accentColor(), COL.fillBorder)
+        if Focus.box == inputBox then
+            local typed = inputBox.text
+            local tw = textWidth(typed)
+            local tx = max(sx + 2, sx + (sw - tw) * 0.5)
+            if typed ~= "" then
+                drawText(tx, sy, typed, COL.text, true)
+            end
+            if (tick() - Focus.blink) % 1 < 0.5 then
+                local cx = typed ~= "" and tx + tw + 1 or sx + sw * 0.5
+                fillRect(cx, sy + 1, cx + 1, sy + 7, COL.white)
+            end
+            return
+        end
         local tw = textWidth(self.text)
         local lb = glyphBearings(string.sub(self.text, 1, 1))
         local _, rb = glyphBearings(string.sub(self.text, -1))
