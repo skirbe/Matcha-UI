@@ -2282,10 +2282,12 @@ function Section:addPage(name)
 end
 
 function Section:contentHeight(w)
-    local total = 0
-    local items = self.pages[self.current].holder.items
-    for i, item in ipairs(items) do
-        total = total + item:height(w - 28) + (i > 1 and 3 or 0)
+    local total, count = 0, 0
+    for _, item in ipairs(self.pages[self.current].holder.items) do
+        if not (item.showIf and not item.showIf()) then
+            total = total + item:height(w - 28) + (count > 0 and 3 or 0)
+            count = count + 1
+        end
     end
     return total
 end
@@ -2323,9 +2325,13 @@ function Section:draw(x, y, w)
     for i, page in ipairs(self.pages) do
         if i == self.current then
             for _, item in ipairs(page.holder.items) do
-                local ih = item:height(ew)
-                item:draw(ex, ey, ew)
-                ey = ey + ih + 3
+                if item.showIf and not item.showIf() then
+                    item:skip()
+                else
+                    local ih = item:height(ew)
+                    item:draw(ex, ey, ew)
+                    ey = ey + ih + 3
+                end
             end
         else
             for _, item in ipairs(page.holder.items) do
