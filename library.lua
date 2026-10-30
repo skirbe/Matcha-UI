@@ -1,3 +1,5 @@
+--skirbe ui lib
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
@@ -2589,6 +2591,49 @@ end
 
 local function namedRow(element, name, x, y, w)
     drawText(inkX(x + 13, name), y, name, COL.text, true)
+end
+
+function library:linker(properties)
+    local cfg = {
+        flag = properties.flag or tostring(math.random(1, 9999999)),
+        callback = properties.callback or function() end,
+        default = properties.default or false,
+    }
+    local element = Element.new("linker")
+    element.state = false
+    element.owner = {}
+
+    function element:height()
+        return 10
+    end
+
+    function element:draw(x, y, w)
+        -- Aligns perfectly with the "-" button of the sliders (x + 13 - 15 = x - 2)
+        local lx = x - 2
+        
+        region(lx, y, 12, 10, self.owner)
+        
+        -- Use unselected text color (grey) when off, and accent (pink) when on
+        local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
+        
+        -- Draw the infinity symbol
+        alignedText(lx, y, 12, 10, "∞", color, 0.5, 0.5, true)
+    end
+
+    function cfg.set(bool)
+        element.state = bool and true or false
+        flags[cfg.flag] = element.state
+        cfg.callback(element.state)
+    end
+
+    element.owner.onClick = function()
+        cfg.set(not element.state)
+    end
+
+    table.insert(self.holder.items, element)
+    cfg.set(cfg.default)
+    library.config_flags[cfg.flag] = cfg.set
+    return setmetatable(cfg, library)
 end
 
 function library:slider(properties)
