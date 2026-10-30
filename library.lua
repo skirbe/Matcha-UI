@@ -2360,7 +2360,9 @@ function library:section(properties)
     }
     local column = self[cfg.side] or self.left
     local section = setmetatable({ name = cfg.name, pages = {}, current = 1 }, Section)
-    section.holder = section:addPage(cfg.name).holder
+    local firstPage = section:addPage(cfg.name)
+    firstPage.label = properties.main or properties.Main or "main"
+    section.holder = firstPage.holder
     table.insert(column.items, section)
     cfg.holder = section.holder
     cfg._section = section
