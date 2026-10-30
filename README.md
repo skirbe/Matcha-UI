@@ -7,7 +7,7 @@ UI library for Matcha. Everything is drawn with the Drawing API, so it doesn't n
 ## Loading it
 
 ```lua
-loadstring(game:HttpGet("https://raw.githubusercontent.com/skirbe/Matcha-UI/main/library.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/xposn/Matcha-UI/main/library.lua"))()
 local library = _G.InterceptionUI
 ```
 
@@ -32,33 +32,24 @@ end })
 
 The keybind and colorpicker there have no name, so they sit on the right side of the toggle above them. A slider or dropdown with no name goes under that toggle instead.
 
-Every element keeps its value in library.flags under its flag, so you can check things like library.flags.aim_enabled from anywhere. Keybinds store a table with key, mode and active.
+Every element keeps its value in `library.flags` under its flag, so you can check things like `library.flags.aim_enabled` from anywhere. Keybinds store a table with `key`, `mode` and `active`.
 
-Tabbed Sections
-You can add internal tabs to a section by passing a pages array. This lets you group related settings together (like Main, Prediction, and FOV) without making entirely new window tabs.
+A keybind can have more than one key. Pass `keys` instead of `key`:
 
 ```lua
-local aim = main:section({ 
-    name = "aimbot", 
-    side = "left", 
-    pages = {"Main", "Prediction", "FOV"} 
-})
-
--- Add elements to the first page (Main)
-aim.set_page(1)
-aim:toggle({ name = "enabled", flag = "aim_enabled" })
-aim:dropdown({ name = "hitpart", flag = "aim_part", items = { "head", "torso" } })
-
--- Add elements to the second page (Prediction)
-aim.set_page(2)
-aim:toggle({ name = "prediction", flag = "aim_pred" })
-aim:slider({ name = "smoothing", flag = "aim_smooth", min = 0, max = 10, default = 5 })
-
--- Add elements to the third page (FOV)
-aim.set_page(3)
-aim:slider({ name = "fov", flag = "aim_fov", min = 0, max = 500 })
+aim:keybind({ flag = "aim_key", keys = { Enum.UserInputType.MouseButton1, Enum.UserInputType.MouseButton2 }, mode = "hold" })
 ```
-The config system automatically saves which tab you were looking at when you save a config, and loads it back to that tab.
+
+That shows `[mb1] [mb2]` on the row. Click either box to rebind just that one (Escape or Backspace clears it, and `"..."` in the list starts a box empty). The bind is active while any of its keys is held, or any of them toggles it in press mode. Its flag also gets a `keys` list, and configs save every key.
+
+A section can have sub tabs. Call `subtab` on it and add elements to what that returns:
+
+```lua
+local prediction = aim:subtab({ name = "prediction" })
+prediction:toggle({ name = "bullet drop", flag = "pred_drop" })
+```
+
+The panel's title then shows both names side by side. Clicking a name switches what the panel shows. Elements on the hidden sub tab keep working, so their keybinds and flags stay live.
 
 ## Other stuff
 
