@@ -2005,7 +2005,7 @@ function library:window(properties)
                 local bx = areaX + (i - 1) * (bw + 6)
                 local selected = window.current == tab
                 region(bx, by, bw, 22, tab.button)
-                alignedText(bx, by, bw, 22, tab.name, selected and COL.white or packColor(themes.preset.unselected_text), 0.5, 0.5, true)
+                alignedText(bx, by, bw, 22, tab.name, packColor(selected and themes.preset.text or themes.preset.unselected_text), 0.5, 0.5, true)
                 fillRect(bx, by + 22, bx + bw, by + 24, selected and accentColor() or COL.c57)
                 fillRect(bx, by + 23, bx + bw, by + 24, COL.black50)
             end
@@ -2303,7 +2303,7 @@ function Section:drawTabs(x, y, w)
         region(tx, y, tabW, 16, page.owner)
         local color
         if i == self.current then
-            color = COL.white
+            color = packColor(themes.preset.text)
         else
             color = hovered(page.owner) and COL.heading or packColor(themes.preset.unselected_text)
         end
