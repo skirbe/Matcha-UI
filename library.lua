@@ -2535,6 +2535,24 @@ function library:slider(properties)
     element.barOwner = {}
     element.addOwner = {}
     element.subOwner = {}
+    
+    local inputBox = { text = "", clearOnFocus = true, owner = {} }
+
+    function inputBox.setText(text)
+        inputBox.text = string.sub((string.gsub(tostring(text), "[^%d%.%-]", "")), 1, 8)
+    end
+
+    function inputBox.onFocusLost(enter)
+        local value = tonumber(inputBox.text)
+        inputBox.text = ""
+        if enter and value then
+            cfg.set(value)
+        end
+    end
+
+    inputBox.owner.onDown = function()
+        focusBox(inputBox)
+    end
 
     function element:barHeight()
         return 10
@@ -2559,6 +2577,12 @@ function library:slider(properties)
         if cfg.value > cfg.min then
             region(sx - 15, sy - 1, 8, 8, self.subOwner)
             alignedText(sx - 15, sy - 1, 8, 8, "-", COL.text, 0.5, 0.5, true)
+        end
+        if Focus.box == inputBox then
+            region(sx, sy, sw, 8, inputBox.owner)
+            frame(sx, sy, sw, 8, COL.c8, accentColor())
+            drawFieldText(sx, sy, sw, 13, inputBox.text, "", true, false)
+            return
         end
         frame(sx + 2, sy + 2, sw - 4, 4, COL.c22, COL.c56)
         local fw = sw * self.fraction
@@ -2605,6 +2629,10 @@ function library:slider(properties)
 
     function element.barOwner.onDragEnd()
         cfg.dragging = false
+    end
+
+    function element.barOwner.onRightClick()
+        focusBox(inputBox)
     end
 
     function element.addOwner.onDown()
