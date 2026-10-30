@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/skirbe/Matcha-UI/refs/heads/main/library.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/xposn/Matcha-UI/main/library.lua"))()
 
 local library = _G.InterceptionUI
 local flags = library.flags
@@ -11,27 +11,17 @@ local combat = window:tab({ name = "combat" })
 local visuals = window:tab({ name = "visuals" })
 local settings = window:tab({ name = "settings" })
 
--- ==========================================
--- UPDATED: Aimbot section with tabs
--- ==========================================
-local aimbot = combat:section({ name = "aimbot", side = "left", pages = {"Main", "Settings"} })
-
--- Page 1: Main
-aimbot.set_page(1)
+local aimbot = combat:section({ name = "aimbot", side = "left" })
 aimbot:toggle({ name = "enabled", flag = "aim_enabled" })
 aimbot:keybind({ flag = "aim_key", key = Enum.KeyCode.E, mode = "hold", display = "aimbot" })
-aimbot:dropdown({ name = "hitpart", flag = "aim_hitpart", items = { "head", "torso", "closest" }, default = "head" })
-aimbot:slider({ flag = "aim_fov", min = 0, max = 500, default = 120, suffix = "px" })
 aimbot:colorpicker({ flag = "aim_fov_color", color = rgb(255, 255, 255) })
+aimbot:slider({ flag = "aim_fov", min = 0, max = 500, default = 120, suffix = "px" })
 aimbot:slider({ name = "smoothness", flag = "aim_smooth", min = 1, max = 20, default = 5, interval = 0.5 })
-
--- Page 2: Settings
-aimbot.set_page(2)
+aimbot:dropdown({ name = "hitpart", flag = "aim_hitpart", items = { "head", "torso", "closest" }, default = "head" })
 aimbot:toggle({ name = "team check", flag = "aim_team" })
 aimbot:toggle({ name = "visible only", flag = "aim_visible" })
 aimbot:dropdown({ flag = "aim_visible_mode", items = { "raycast", "occlusion" } })
 
--- Standard section on the right
 local trigger = combat:section({ name = "triggerbot", side = "right" })
 trigger:toggle({ name = "enabled", flag = "trigger_enabled" })
 trigger:keybind({ flag = "trigger_key", key = Enum.UserInputType.MouseButton2, mode = "hold", display = "triggerbot" })
@@ -40,32 +30,21 @@ trigger:button({ name = "test notification", callback = function()
     library:notification({ text = "triggerbot armed", time = 3 })
 end })
 
-
--- ==========================================
--- UPDATED: Player section with tabs
--- ==========================================
-local player = visuals:section({ name = "player", side = "left", pages = {"Features", "Colors"} })
-
--- Page 1: Features
-player.set_page(1)
+local player = visuals:section({ name = "player", side = "left" })
 player:toggle({ name = "enable", flag = "player_enable" })
 player:keybind({ flag = "player_key", key = Enum.KeyCode.F, mode = "toggle", display = "Player ESP" })
 player:toggle({ name = "name", flag = "player_name", default = true })
+player:colorpicker({ flag = "player_name_color", color = rgb(255, 255, 255) })
 player:toggle({ name = "distance", flag = "player_distance", default = true })
+player:colorpicker({ flag = "player_distance_color", color = rgb(255, 255, 255) })
 player:toggle({ name = "equipped", flag = "player_equipped", default = true })
+player:colorpicker({ flag = "player_equipped_color", color = rgb(255, 255, 255) })
 player:toggle({ name = "show players on map", flag = "player_map" })
 player:dropdown({ flag = "player_map_info", items = { "name", "equipped" }, multi = true, default = { "name", "equipped" } })
 player:toggle({ name = "info list", flag = "player_info_list", default = true, callback = function(bool)
     window.toggle_info_list(bool)
 end })
 player:slider({ name = "max distance", flag = "player_max_distance", min = 0, max = 1000, default = 1000, suffix = "m" })
-
--- Page 2: Colors
-player.set_page(2)
-player:colorpicker({ name = "name color", flag = "player_name_color", color = rgb(255, 255, 255) })
-player:colorpicker({ name = "distance color", flag = "player_distance_color", color = rgb(255, 255, 255) })
-player:colorpicker({ name = "equipped color", flag = "player_equipped_color", color = rgb(255, 255, 255) })
-
 window.set_info("XxQueen_ALPHAXX2018", {
     { label = "Backpack", value = "Daypack Black" },
     { label = "Item", value = "Ruger Model 44 Carbine", list = { "Red Dot", "Suppressor", "Grip" } },
