@@ -2591,12 +2591,10 @@ function library:linker(properties)
     end
 
     function element:draw(x, y, w)
-        local lx = x - 2
-        region(lx, y, 12, 14, self.owner)
+        region(x, y, w, 14, self.owner)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
-        
-        drawText(lx + 6 - (textWidth("<>") / 2), y + 1, "<>", color, true)
+        alignedText(x, y, w, 14, "<>", color, 0.5, 0.5, true)
     end
 
     function cfg.set(bool)
