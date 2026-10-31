@@ -2591,16 +2591,12 @@ function library:linker(properties)
     end
 
     function element:draw(x, y, w)
-        -- Aligns perfectly with the "-" button of the sliders (x + 13 - 15 = x - 2)
         local lx = x - 2
-        
         region(lx, y, 12, 10, self.owner)
         
-        -- Use unselected text color (grey) when off, and accent (pink) when on
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
         
-        -- Draw the infinity symbol
-        alignedText(lx, y, 12, 10, "∞", color, 0.5, 0.5, true)
+        alignedText(lx, y, 12, 10, "<>", color, 0.5, 0.5, true)
     end
 
     function cfg.set(bool)
