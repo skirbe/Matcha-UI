@@ -2241,13 +2241,6 @@ function library:window(properties)
     function cfg.set_watermark_position(position)
         watermark.position = position
     end
-    function cfg.toggle_watermark(bool)
-        watermark.visible = bool and true or false
-    end
-
-    function cfg.set_watermark_position(position)
-        watermark.position = position
-    end
 
     function cfg.set_watermark_info(list)
         local show = {}
@@ -2257,16 +2250,6 @@ function library:window(properties)
         watermark.show = show
         setSegments()
     end
-
-    function cfg.set_menu_visibility(bool)
-        window.visible = bool and true or false
-        if not bool then
-            closeOpenElement()
-        end
-    end
-
-    return setmetatable(cfg, library)
-end
 
     function cfg.set_menu_visibility(bool)
         window.visible = bool and true or false
