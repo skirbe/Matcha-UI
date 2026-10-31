@@ -2596,17 +2596,7 @@ function library:linker(properties)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
         
-        local cx, cy = lx + 6, y + 7
-        
-        fillRect(cx - 5, cy - 2, cx - 1, cy - 1, color) -- Top
-        fillRect(cx - 5, cy + 1, cx - 1, cy + 2, color) -- Bottom
-        fillRect(cx - 5, cy - 1, cx - 4, cy + 1, color) -- Left
-        fillRect(cx - 2, cy - 1, cx - 1, cy + 1, color) -- Right
-        
-        fillRect(cx + 1, cy - 2, cx + 5, cy - 1, color) -- Top
-        fillRect(cx + 1, cy + 1, cx + 5, cy + 2, color) -- Bottom
-        fillRect(cx + 2, cy - 1, cx + 3, cy + 1, color) -- Left
-        fillRect(cx + 4, cy - 1, cx + 5, cy + 1, color) -- Right
+        drawText(lx + 6 - (textWidth("<>") / 2), y + 1, "<>", color, true)
     end
 
     function cfg.set(bool)
