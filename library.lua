@@ -2596,7 +2596,9 @@ function library:linker(properties)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
         
-        alignedText(lx, y + 1, 12, 10, "<>", color, 0.5, 0.5, true)
+        local cx, cy = lx + 6, y + 5
+        fillTriangle(cx - 4, cy, cx - 1, cy - 2, cx - 1, cy + 2, color)
+        fillTriangle(cx + 4, cy, cx + 1, cy - 2, cx + 1, cy + 2, color)
     end
 
     function cfg.set(bool)
