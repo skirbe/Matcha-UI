@@ -2596,7 +2596,7 @@ function library:linker(properties)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
         
-        alignedText(lx, y, 12, 10, "<>", color, 0.5, 0.5, true)
+        alignedText(lx, y + 1, 12, 10, "<>", color, 0.5, 0.5, true)
     end
 
     function cfg.set(bool)
