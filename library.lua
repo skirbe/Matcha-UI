@@ -2587,14 +2587,19 @@ function library:linker(properties)
     element.owner = {}
 
     function element:height()
-        return 14
+        return 0
     end
 
     function element:draw(x, y, w)
-        region(x, y, w, 14, self.owner)
+        local lx = x - 4
+        
+        region(lx, y + 6, 12, 14, self.owner)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
-        alignedText(x, y, w, 14, "<>", color, 0.5, 0.5, true)
+        local text = "<>"
+        local tx = lx + (12 - textWidth(text)) / 2
+        
+        drawText(tx, y + 8, text, color, true)
     end
 
     function cfg.set(bool)
