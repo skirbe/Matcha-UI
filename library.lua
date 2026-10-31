@@ -2587,18 +2587,26 @@ function library:linker(properties)
     element.owner = {}
 
     function element:height()
-        return 10
+        return 14
     end
 
     function element:draw(x, y, w)
         local lx = x - 2
-        region(lx, y, 12, 10, self.owner)
+        region(lx, y, 12, 14, self.owner)
         
         local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
         
-        local cx, cy = lx + 6, y + 5
-        fillTriangle(cx - 4, cy, cx - 1, cy - 2, cx - 1, cy + 2, color)
-        fillTriangle(cx + 4, cy, cx + 1, cy - 2, cx + 1, cy + 2, color)
+        local cx, cy = lx + 6, y + 7
+        
+        fillRect(cx - 5, cy - 2, cx - 1, cy - 1, color) -- Top
+        fillRect(cx - 5, cy + 1, cx - 1, cy + 2, color) -- Bottom
+        fillRect(cx - 5, cy - 1, cx - 4, cy + 1, color) -- Left
+        fillRect(cx - 2, cy - 1, cx - 1, cy + 1, color) -- Right
+        
+        fillRect(cx + 1, cy - 2, cx + 5, cy - 1, color) -- Top
+        fillRect(cx + 1, cy + 1, cx + 5, cy + 2, color) -- Bottom
+        fillRect(cx + 2, cy - 1, cx + 3, cy + 1, color) -- Left
+        fillRect(cx + 4, cy - 1, cx + 5, cy + 1, color) -- Right
     end
 
     function cfg.set(bool)
