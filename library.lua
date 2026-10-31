@@ -2576,48 +2576,6 @@ local function namedRow(element, name, x, y, w)
     drawText(inkX(x + 13, name), y, name, COL.text, true)
 end
 
-function library:linker(properties)
-    local cfg = {
-        flag = properties.flag or tostring(math.random(1, 9999999)),
-        callback = properties.callback or function() end,
-        default = properties.default or false,
-    }
-    local element = Element.new("linker")
-    element.state = false
-    element.owner = {}
-
-    function element:height()
-        return 0
-    end
-
-    function element:draw(x, y, w)
-        local lx = x - 4
-        
-        region(lx, y + 6, 12, 14, self.owner)
-        
-        local color = self.state and accentColor() or packColor(themes.preset.unselected_text)
-        local text = "<>"
-        local tx = lx + (12 - textWidth(text)) / 2
-        
-        drawText(tx, y + 8, text, color, true)
-    end
-
-    function cfg.set(bool)
-        element.state = bool and true or false
-        flags[cfg.flag] = element.state
-        cfg.callback(element.state)
-    end
-
-    element.owner.onClick = function()
-        cfg.set(not element.state)
-    end
-
-    table.insert(self.holder.items, element)
-    cfg.set(cfg.default)
-    library.config_flags[cfg.flag] = cfg.set
-    return setmetatable(cfg, library)
-end
-
 function library:slider(properties)
     local cfg = {
         name = properties.name or nil,
